@@ -1,0 +1,163 @@
+name: Terraform CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+#-------------------------------------------------------------
+# 1. Terraform Plan - Pull Request
+#-------------------------------------------------------------
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+  
+    env:
+      Dev_ARM_CLIENT_ID: ${{ secrets.Dev_ARM_CLIENT_ID }}
+      Dev_ARM_CLIENT_SECRET: ${{ secrets.Dev_ARM_CLIENT_SECRET }}
+      Dev_ARM_SUBSCRIPTION_ID: ${{ secrets.Dev_ARM_SUBSCRIPTION_ID }}
+      Dev_ARM_TENANT_ID: ${{ secrets.Dev_ARM_TENANT_ID }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.0.0
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform format
+        run: terraform fmt -check  
+      
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        run: terraform plan
+#-------------------------------------------------------------
+# 2. Dev Deployment
+#-------------------------------------------------------------
+
+deploy-dev:
+  name: Deploy Dev
+  runs-on: ubuntu-latest
+  if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  env:
+    Dev_ARM_CLIENT_ID: ${{ secrets.Dev_ARM_CLIENT_ID }}
+    Dev_ARM_CLIENT_SECRET: ${{ secrets.Dev_ARM_CLIENT_SECRET }}
+    Dev_ARM_SUBSCRIPTION_ID: ${{ secrets.Dev_ARM_SUBSCRIPTION_ID }}
+    Dev_ARM_TENANT_ID: ${{ secrets.Dev_ARM_TENANT_ID }}
+
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: authenticate to Azure
+      uses: azure/login@v2
+      with:
+        creds: '{
+          "clientId": "${{ secrets.Dev_ARM_CLIENT_ID }}",
+          "clientSecret": "${{ secrets.Dev_ARM_CLIENT_SECRET }}",
+          "subscriptionId": "${{ secrets.Dev_ARM_SUBSCRIPTION_ID }}",
+          "tenantId": "${{ secrets.Dev_ARM_TENANT_ID }}"
+        }'
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.0.0
+
+    - name: Terraform Init
+      run: terraform init
+
+    - name: Terraform Plan
+      run: terraform plan
+
+    - name: Terraform Apply
+      run: terraform apply -auto-approve -input=false
+
+#-------------------------------------------------------------
+# 3. Validate Dev
+#-------------------------------------------------------------
+validate-dev:
+  name: Validate Dev
+  needs: deploy-dev
+  runs-on: ubuntu-latest
+
+  
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: authenticate to Azure
+      uses: azure/login@v2
+      with:
+        creds: '{
+          "clientId": "${{ secrets.Dev_ARM_CLIENT_ID }}",
+          "clientSecret": "${{ secrets.Dev_ARM_CLIENT_SECRET }}",
+          "subscriptionId": "${{ secrets.Dev_ARM_SUBSCRIPTION_ID }}",
+          "tenantId": "${{ secrets.Dev_ARM_TENANT_ID }}"
+        }'
+    - name: Validate Azure Resources
+      run: |
+        az group show --name ${{ secrets.Dev_ARM_RESOURCE_GROUP_NAME }}
+        az storage account show --name ${{ secrets.Dev_ARM_STORAGE_ACCOUNT_NAME }} --resource-group ${{ secrets.Dev_ARM_RESOURCE_GROUP_NAME }}
+
+        echo "Azure resources validated successfully."
+
+#-------------------------------------------------------------
+# 4. UAT Deployment
+#-------------------------------------------------------------
+deploy-uat:
+  name: Deploy UAT
+  needs: validate-dev
+  runs-on: ubuntu-latest
+
+  environment:
+    name: uat
+
+  env:
+    UAT_ARM_CLIENT_ID: ${{ secrets.UAT_ARM_CLIENT_ID }}
+    UAT_ARM_CLIENT_SECRET: ${{ secrets.UAT_ARM_CLIENT_SECRET }}
+    UAT_ARM_SUBSCRIPTION_ID: ${{ secrets.UAT_ARM_SUBSCRIPTION_ID }}
+    UAT_ARM_TENANT_ID: ${{ secrets.UAT_ARM_TENANT_ID }}
+
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: authenticate to Azure
+      uses: azure/login@v2
+      with:
+        creds: '{
+          "clientId": "${{ secrets.UAT_ARM_CLIENT_ID }}",
+          "clientSecret": "${{ secrets.UAT_ARM_CLIENT_SECRET }}",
+          "subscriptionId": "${{ secrets.UAT_ARM_SUBSCRIPTION_ID }}",
+          "tenantId": "${{ secrets.UAT_ARM_TENANT_ID }}"
+        }'
+
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.0.0
+
+    - name: Terraform Init UAT
+      run: terraform init
+
+    - name: Terraform Validate UAT
+      run: terraform validate
+    
+    - name: Terraform Plan UAT
+      run: terraform plan
+
+    - name: Terraform Apply UAT
+      run: terraform apply -auto-approve -input=false
+  
