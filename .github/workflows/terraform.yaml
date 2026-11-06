@@ -73,10 +73,10 @@ jobs:
         working-directory: ./Environments/Dev
 
     env:
-      Dev_ARM_CLIENT_ID: ${{ secrets.Dev_ARM_CLIENT_ID }}
-      Dev_ARM_CLIENT_SECRET: ${{ secrets.Dev_ARM_CLIENT_SECRET }}
-      Dev_ARM_SUBSCRIPTION_ID: ${{ secrets.Dev_ARM_SUBSCRIPTION_ID }}
-      Dev_ARM_TENANT_ID: ${{ secrets.Dev_ARM_TENANT_ID }}
+      Dev_ARM_CLIENT_ID: ${{ secrets.DEV_ARM_CLIENT_ID }}
+      Dev_ARM_CLIENT_SECRET: ${{ secrets.DEV_ARM_CLIENT_SECRET }}
+      Dev_ARM_SUBSCRIPTION_ID: ${{ secrets.DEV_ARM_SUBSCRIPTION_ID }}
+      Dev_ARM_TENANT_ID: ${{ secrets.DEV_ARM_TENANT_ID }}
 
     steps:
       - name: Checkout code
@@ -86,10 +86,10 @@ jobs:
         uses: azure/login@v2
         with:
           creds: '{
-            "clientId": "${{ secrets.Dev_ARM_CLIENT_ID }}",
-            "clientSecret": "${{ secrets.Dev_ARM_CLIENT_SECRET }}",
-            "subscriptionId": "${{ secrets.Dev_ARM_SUBSCRIPTION_ID }}",
-            "tenantId": "${{ secrets.Dev_ARM_TENANT_ID }}"
+            "clientId": "${{ secrets.DEV_ARM_CLIENT_ID }}",
+            "clientSecret": "${{ secrets.DEV_ARM_CLIENT_SECRET }}",
+            "subscriptionId": "${{ secrets.DEV_ARM_SUBSCRIPTION_ID }}",
+            "tenantId": "${{ secrets.DEV_ARM_TENANT_ID }}"
           }'
 
       - name: Set up Terraform
@@ -124,10 +124,10 @@ jobs:
         uses: azure/login@v2
         with:
           creds: '{
-            "clientId": "${{ secrets.Dev_ARM_CLIENT_ID }}",
-            "clientSecret": "${{ secrets.Dev_ARM_CLIENT_SECRET }}",
-            "subscriptionId": "${{ secrets.Dev_ARM_SUBSCRIPTION_ID }}",
-            "tenantId": "${{ secrets.Dev_ARM_TENANT_ID }}"
+            "clientId": "${{ secrets.DEV_ARM_CLIENT_ID }}",
+            "clientSecret": "${{ secrets.DEV_ARM_CLIENT_SECRET }}",
+            "subscriptionId": "${{ secrets.DEV_ARM_SUBSCRIPTION_ID }}",
+            "tenantId": "${{ secrets.DEV_ARM_TENANT_ID }}"
           }'
 
       - name: Validate Azure Resources
