@@ -23,12 +23,13 @@ jobs:
         working-directory: ./Environments/Dev
 
     env:
-      Dev_ARM_CLIENT_ID: ${{ secrets.Dev_ARM_CLIENT_ID }}
-      Dev_ARM_CLIENT_SECRET: ${{ secrets.Dev_ARM_CLIENT_SECRET }}
-      Dev_ARM_SUBSCRIPTION_ID: ${{ secrets.Dev_ARM_SUBSCRIPTION_ID }}
-      Dev_ARM_TENANT_ID: ${{ secrets.Dev_ARM_TENANT_ID }}
+      ARM_CLIENT_ID: ${{ secrets.DEV_ARM_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.DEV_ARM_CLIENT_SECRET }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.DEV_ARM_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.DEV_ARM_TENANT_ID }}
 
     steps:
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -36,10 +37,10 @@ jobs:
         uses: azure/login@v2
         with:
           creds: '{
-            "clientId": "${{ secrets.Dev_ARM_CLIENT_ID }}",
-            "clientSecret": "${{ secrets.Dev_ARM_CLIENT_SECRET }}",
-            "subscriptionId": "${{ secrets.Dev_ARM_SUBSCRIPTION_ID }}",
-            "tenantId": "${{ secrets.Dev_ARM_TENANT_ID }}"
+            "clientId": "${{ secrets.DEV_ARM_CLIENT_ID }}",
+            "clientSecret": "${{ secrets.DEV_ARM_CLIENT_SECRET }}",
+            "subscriptionId": "${{ secrets.DEV_ARM_SUBSCRIPTION_ID }}",
+            "tenantId": "${{ secrets.DEV_ARM_TENANT_ID }}"
           }'
 
       - name: Set up Terraform
@@ -61,7 +62,7 @@ jobs:
 
 
 #-------------------------------------------------------------
-# 2. Dev Deployment
+# 2. Deploy Dev
 #-------------------------------------------------------------
   deploy-dev:
     name: Deploy Dev
@@ -73,12 +74,13 @@ jobs:
         working-directory: ./Environments/Dev
 
     env:
-      Dev_ARM_CLIENT_ID: ${{ secrets.DEV_ARM_CLIENT_ID }}
-      Dev_ARM_CLIENT_SECRET: ${{ secrets.DEV_ARM_CLIENT_SECRET }}
-      Dev_ARM_SUBSCRIPTION_ID: ${{ secrets.DEV_ARM_SUBSCRIPTION_ID }}
-      Dev_ARM_TENANT_ID: ${{ secrets.DEV_ARM_TENANT_ID }}
+      ARM_CLIENT_ID: ${{ secrets.DEV_ARM_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.DEV_ARM_CLIENT_SECRET }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.DEV_ARM_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.DEV_ARM_TENANT_ID }}
 
     steps:
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -100,6 +102,12 @@ jobs:
       - name: Terraform Init
         run: terraform init
 
+      - name: Terraform Format
+        run: terraform fmt -check
+
+      - name: Terraform Validate
+        run: terraform validate
+
       - name: Terraform Plan
         run: terraform plan
 
@@ -117,6 +125,7 @@ jobs:
     needs: deploy-dev
 
     steps:
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -130,20 +139,24 @@ jobs:
             "tenantId": "${{ secrets.DEV_ARM_TENANT_ID }}"
           }'
 
-      - name: Validate Azure Resources
+      - name: Validate Dev Resource Group
         run: |
           az group show \
             --name "${{ secrets.Dev_ARM_RESOURCE_GROUP_NAME }}"
 
+      - name: Validate Dev Storage Account
+        run: |
           az storage account show \
             --name "${{ secrets.Dev_ARM_STORAGE_ACCOUNT_NAME }}" \
             --resource-group "${{ secrets.Dev_ARM_RESOURCE_GROUP_NAME }}"
 
-          echo "Azure resources validated successfully."
+      - name: Dev Validation Successful
+        run: |
+          echo "Dev Azure resources validated successfully."
 
 
 #-------------------------------------------------------------
-# 4. UAT Deployment
+# 4. Deploy UAT
 #-------------------------------------------------------------
   deploy-uat:
     name: Deploy UAT
@@ -159,12 +172,13 @@ jobs:
         working-directory: ./Environments/UAT
 
     env:
-      UAT_ARM_CLIENT_ID: ${{ secrets.UAT_ARM_CLIENT_ID }}
-      UAT_ARM_CLIENT_SECRET: ${{ secrets.UAT_ARM_CLIENT_SECRET }}
-      UAT_ARM_SUBSCRIPTION_ID: ${{ secrets.UAT_ARM_SUBSCRIPTION_ID }}
-      UAT_ARM_TENANT_ID: ${{ secrets.UAT_ARM_TENANT_ID }}
+      ARM_CLIENT_ID: ${{ secrets.UAT_ARM_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.UAT_ARM_CLIENT_SECRET }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.UAT_ARM_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.UAT_ARM_TENANT_ID }}
 
     steps:
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -183,14 +197,17 @@ jobs:
         with:
           terraform_version: 1.0.0
 
-      - name: Terraform Init UAT
+      - name: Terraform Init
         run: terraform init
 
-      - name: Terraform Validate UAT
+      - name: Terraform Format
+        run: terraform fmt -check
+
+      - name: Terraform Validate
         run: terraform validate
 
-      - name: Terraform Plan UAT
+      - name: Terraform Plan
         run: terraform plan
 
-      - name: Terraform Apply UAT
+      - name: Terraform Apply
         run: terraform apply -auto-approve -input=false
