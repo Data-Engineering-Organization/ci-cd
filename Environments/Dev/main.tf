@@ -26,7 +26,7 @@ module "ResourceGroup" {
 }
 
 module "StorageAccount" {
-  source        = "../../modules/StorageAccount"
+  source        = "../../Modules/StorageAccount"
   resource_group_name = module.ResourceGroup.rg_name_out
   base_name     = "${var.base_name}"
   base_location = module.ResourceGroup.rg_location_out
