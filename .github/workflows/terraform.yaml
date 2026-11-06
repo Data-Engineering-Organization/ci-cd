@@ -18,6 +18,10 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
 
+    defaults:
+      run:
+        working-directory: ./Environments/Dev
+
     env:
       Dev_ARM_CLIENT_ID: ${{ secrets.Dev_ARM_CLIENT_ID }}
       Dev_ARM_CLIENT_SECRET: ${{ secrets.Dev_ARM_CLIENT_SECRET }}
@@ -27,6 +31,16 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Authenticate to Azure
+        uses: azure/login@v2
+        with:
+          creds: '{
+            "clientId": "${{ secrets.Dev_ARM_CLIENT_ID }}",
+            "clientSecret": "${{ secrets.Dev_ARM_CLIENT_SECRET }}",
+            "subscriptionId": "${{ secrets.Dev_ARM_SUBSCRIPTION_ID }}",
+            "tenantId": "${{ secrets.Dev_ARM_TENANT_ID }}"
+          }'
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
@@ -53,6 +67,10 @@ jobs:
     name: Deploy Dev
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    defaults:
+      run:
+        working-directory: ./Environments/Dev
 
     env:
       Dev_ARM_CLIENT_ID: ${{ secrets.Dev_ARM_CLIENT_ID }}
@@ -135,6 +153,10 @@ jobs:
 
     environment:
       name: uat
+
+    defaults:
+      run:
+        working-directory: ./Environments/UAT
 
     env:
       UAT_ARM_CLIENT_ID: ${{ secrets.UAT_ARM_CLIENT_ID }}
