@@ -1,0 +1,213 @@
+name: Terraform CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+
+#-------------------------------------------------------------
+# 1. Terraform Plan - Pull Request
+#-------------------------------------------------------------
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    defaults:
+      run:
+        working-directory: ./Environments/Dev
+
+    env:
+      ARM_CLIENT_ID: ${{ secrets.DEV_ARM_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.DEV_ARM_CLIENT_SECRET }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.DEV_ARM_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.DEV_ARM_TENANT_ID }}
+
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Azure
+        uses: azure/login@v2
+        with:
+          creds: '{
+            "clientId": "${{ secrets.DEV_ARM_CLIENT_ID }}",
+            "clientSecret": "${{ secrets.DEV_ARM_CLIENT_SECRET }}",
+            "subscriptionId": "${{ secrets.DEV_ARM_SUBSCRIPTION_ID }}",
+            "tenantId": "${{ secrets.DEV_ARM_TENANT_ID }}"
+          }'
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.0.0
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Format
+        run: terraform fmt -check
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        run: terraform plan
+
+
+#-------------------------------------------------------------
+# 2. Deploy Dev
+#-------------------------------------------------------------
+  deploy-dev:
+    name: Deploy Dev
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    defaults:
+      run:
+        working-directory: ./Environments/Dev
+
+    env:
+      ARM_CLIENT_ID: ${{ secrets.DEV_ARM_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.DEV_ARM_CLIENT_SECRET }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.DEV_ARM_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.DEV_ARM_TENANT_ID }}
+
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Azure
+        uses: azure/login@v2
+        with:
+          creds: '{
+            "clientId": "${{ secrets.DEV_ARM_CLIENT_ID }}",
+            "clientSecret": "${{ secrets.DEV_ARM_CLIENT_SECRET }}",
+            "subscriptionId": "${{ secrets.DEV_ARM_SUBSCRIPTION_ID }}",
+            "tenantId": "${{ secrets.DEV_ARM_TENANT_ID }}"
+          }'
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.0.0
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Format
+        run: terraform fmt -check
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        run: terraform plan
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve -input=false
+
+
+#-------------------------------------------------------------
+# 3. Validate Dev
+#-------------------------------------------------------------
+  validate-dev:
+    name: Validate Dev
+    runs-on: ubuntu-latest
+
+    needs: deploy-dev
+
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Azure
+        uses: azure/login@v2
+        with:
+          creds: '{
+            "clientId": "${{ secrets.DEV_ARM_CLIENT_ID }}",
+            "clientSecret": "${{ secrets.DEV_ARM_CLIENT_SECRET }}",
+            "subscriptionId": "${{ secrets.DEV_ARM_SUBSCRIPTION_ID }}",
+            "tenantId": "${{ secrets.DEV_ARM_TENANT_ID }}"
+          }'
+
+      - name: Validate Dev Resource Group
+        run: |
+          az group show \
+            --name "${{ secrets.Dev_ARM_RESOURCE_GROUP_NAME }}"
+
+      - name: Validate Dev Storage Account
+        run: |
+          az storage account show \
+            --name "${{ secrets.Dev_ARM_STORAGE_ACCOUNT_NAME }}" \
+            --resource-group "${{ secrets.Dev_ARM_RESOURCE_GROUP_NAME }}"
+
+      - name: Dev Validation Successful
+        run: |
+          echo "Dev Azure resources validated successfully."
+
+
+#-------------------------------------------------------------
+# 4. Deploy UAT
+#-------------------------------------------------------------
+  deploy-uat:
+    name: Deploy UAT
+    runs-on: ubuntu-latest
+
+    needs: validate-dev
+
+    environment:
+      name: uat
+
+    defaults:
+      run:
+        working-directory: ./Environments/UAT
+
+    env:
+      ARM_CLIENT_ID: ${{ secrets.UAT_ARM_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.UAT_ARM_CLIENT_SECRET }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.UAT_ARM_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.UAT_ARM_TENANT_ID }}
+
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Azure
+        uses: azure/login@v2
+        with:
+          creds: '{
+            "clientId": "${{ secrets.UAT_ARM_CLIENT_ID }}",
+            "clientSecret": "${{ secrets.UAT_ARM_CLIENT_SECRET }}",
+            "subscriptionId": "${{ secrets.UAT_ARM_SUBSCRIPTION_ID }}",
+            "tenantId": "${{ secrets.UAT_ARM_TENANT_ID }}"
+          }'
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.0.0
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Format
+        run: terraform fmt -check
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        run: terraform plan
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve -input=false
